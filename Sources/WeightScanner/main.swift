@@ -7,16 +7,13 @@
 
 import AWSLambdaRuntime
 
-private struct Request: Codable {
-  let name: String
-}
+private struct Request: Codable {}
 
 private struct Response: Codable {
   let message: String
 }
 
-//Lambda.run { (context, request: Request, callback: @escaping (Result<Response, Error>) -> Void) in
-Lambda.run { (_, _, callback) in
-    callback(.success("Hello, AWS Server!"))
-//    callback(.success(Response(message: "Hello! from AWS server.")))
+Lambda.run { (context, request: Request, callback: @escaping (Result<Response, Error>) -> Void) in
+    let envValue = Lambda.env("TEST_ENV_KEY")
+    callback(.success(Response(message: "Hello, AWS Server! Environment value is \(envValue ?? "not found").")))
 }
