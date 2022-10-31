@@ -16,9 +16,9 @@ private struct LambdaResponse: Codable {
 }
 
 Lambda.run { (context, request: LambdaRequest, callback: @escaping (Result<LambdaResponse, Swift.Error>) -> Void) in
-    guard let clientId = Lambda.env("HEALTH_PLANET_CLIENT_ID"),
-          let clientSecret = Lambda.env("HEALTH_PLANET_CLIENT_SECRET"),
-          let refreshToken = Lambda.env("HEALTH_PLANET_REFRESH_TOKEN") else {
+    guard let clientId = Lambda.env(.healthPlanetClientId),
+          let clientSecret = Lambda.env(.healthPlanetClientSecret),
+          let refreshToken = Lambda.env(.healthPlanetRefreshToken) else {
         callback(.failure(Error.withComment("Please check EnvironmentValues.")))
         return
     }
