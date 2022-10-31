@@ -5,31 +5,31 @@
 //  Created by 赤迫亮太 on 2022/10/18.
 //
 
-import Foundation
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
 import AWSLambdaRuntime
 
-private struct Request: Codable {}
-
-private struct Response: Codable {
-  let message: String
-}
-
-enum WeightScannerError: Swift.Error {
-    case dummy
-}
-
-Lambda.run { (context, request: Request, callback: @escaping (Result<Response, Error>) -> Void) in
-    let url = URL(string: "https://www.google.com")!
-    let request = URLRequest(url: url)
-    let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
-        guard let httpResponse = response as? HTTPURLResponse else {
-            callback(.failure(WeightScannerError.dummy))
-            return
-        }
-        callback(.success(Response(message: "statusCode: \(httpResponse.statusCode))")))
+private struct LambdaRequest: Codable {}
+private struct LambdaResponse: Codable {
+    let message: String
+    init(message: String = "") {
+        self.message = message
     }
-    task.resume()
+}
+
+Lambda.run { (context, request: LambdaRequest, callback: @escaping (Result<LambdaResponse, Swift.Error>) -> Void) in
+    guard let clientId = Lambda.env("HEALTH_PLANET_CLIENT_ID"),
+          let clientSecret = Lambda.env("HEALTH_PLANET_CLIENT_SECRET"),
+          let refreshToken = Lambda.env("HEALTH_PLANET_REFRESH_TOKEN") else {
+        callback(.failure(Error.withComment("Please check EnvironmentValues.")))
+        return
+    }
+    
+    let request = WealthPlanetTokenRequest(clientId: clientId, clientSecret: clientSecret, refreshToken: refreshToken)
+    APIClient.exec(request: request) { result in
+        switch result {
+        case .success(let response):
+            callback(.success(LambdaResponse(message: "accessToken is \(response.result.accessToken)")))
+        case .failure(let error):
+            callback(.failure(error))
+        }
+    }
 }
