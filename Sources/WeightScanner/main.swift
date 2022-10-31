@@ -15,21 +15,59 @@ private struct LambdaResponse: Codable {
     }
 }
 
-Lambda.run { (context, request: LambdaRequest, callback: @escaping (Result<LambdaResponse, Swift.Error>) -> Void) in
-    guard let clientId = Lambda.env(.healthPlanetClientId),
-          let clientSecret = Lambda.env(.healthPlanetClientSecret),
-          let refreshToken = Lambda.env(.healthPlanetRefreshToken) else {
-        callback(.failure(Error.withComment("Please check EnvironmentValues.")))
+private var callbackHandler: ((Result<LambdaResponse, Swift.Error>) -> Void)?
+
+private let lambdaCodableClosure: Lambda.CodableClosure<LambdaRequest, LambdaResponse> = { context, request, callback in
+    callbackHandler = callback
+    getToken()
+}
+    
+Lambda.run(lambdaCodableClosure)
+
+
+// MARK: - HealthPlanet API
+
+private func getToken() {
+    guard let clientId = env(.healthPlanetClientId),
+          let clientSecret = env(.healthPlanetClientSecret),
+          let refreshToken = env(.healthPlanetRefreshToken) else {
+        callbackHandler?(.failure(Error.withComment("Please check EnvironmentValues.")))
+        callbackHandler = nil
         return
     }
     
-    let request = WealthPlanetTokenRequest(clientId: clientId, clientSecret: clientSecret, refreshToken: refreshToken)
+    let request = WealthPlanetOAuthTokenRequest(clientId: clientId, clientSecret: clientSecret, refreshToken: refreshToken)
     APIClient.exec(request: request) { result in
         switch result {
         case .success(let response):
-            callback(.success(LambdaResponse(message: "accessToken is \(response.result.accessToken)")))
+            getInnerScanData(accessToken: response.result.accessToken)
         case .failure(let error):
-            callback(.failure(error))
+            callbackHandler?(.failure(error))
+            callbackHandler = nil
+        }
+    }
+}
+
+private func getInnerScanData(accessToken: String) {
+    let request = WealthPlanetStatusInnerScanRequest(accessToken: accessToken)
+    APIClient.exec(request: request) { result in
+        switch result {
+        case .success(let response):
+            guard !response.result.data.isEmpty else {
+                callbackHandler?(.failure(Error.withComment("Empty Data Response")))
+                callbackHandler = nil
+                return
+            }
+            let date = response.result.data.map(\.date).max()!
+            let sorted = response.result.data.sorted { $0.date < $1.date }
+            let weight = sorted.filter { $0.tag == "6021" }.last!.keydata
+            let fat = sorted.filter { $0.tag == "6022" }.last!.keydata
+            
+            callbackHandler?(.success(LambdaResponse(message: "date: \(date), weight: \(weight), fat: \(fat)")))
+            
+        case .failure(let error):
+            callbackHandler?(.failure(error))
+            callbackHandler = nil
         }
     }
 }

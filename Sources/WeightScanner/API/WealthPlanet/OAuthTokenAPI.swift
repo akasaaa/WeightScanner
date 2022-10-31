@@ -1,5 +1,5 @@
 //
-//  WealthPlanetTokenAPI.swift
+//  OAuthTokenAPI.swift
 //  
 //
 //  Created by 赤迫亮太 on 2022/10/31.
@@ -7,8 +7,8 @@
 
 import Foundation
 
-struct WealthPlanetTokenRequest: APIRequest {
-    typealias Response = WealthPlanetTokenResponse
+struct WealthPlanetOAuthTokenRequest: APIRequest {
+    typealias Response = WealthPlanetOAuthTokenResponse
     let url = URL(string: "https://www.healthplanet.jp/oauth/token")!
     let httpMethod = HTTPMethod.post
     let parameters: [String : Any]
@@ -21,7 +21,7 @@ struct WealthPlanetTokenRequest: APIRequest {
     }
 }
 
-struct WealthPlanetTokenResponse: APIResponse {
+struct WealthPlanetOAuthTokenResponse: APIResponse {
     struct Result: Codable {
         let accessToken: String
         let expiresIn: Int
