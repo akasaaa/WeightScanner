@@ -37,8 +37,14 @@ private extension APIRequest {
 
 protocol APIResponse {
     associatedtype Result: Codable
+    static var decoder: JSONDecoder { get }
     var result: Result { get }
     init(result: Result)
+}
+extension APIResponse {
+    static var decoder: JSONDecoder {
+        JSONDecoder()
+    }
 }
 
 struct APIClient {
@@ -58,7 +64,7 @@ struct APIClient {
                 return
             }
             do {
-                let decoder = JSONDecoder()
+                let decoder = Request.Response.decoder
                 let result = try decoder.decode(Request.Response.Result.self, from: data)
                 let apiResponse = Request.Response(result: result)
                 handler(.success(apiResponse))
